@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Performance Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .chart {
+            background: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        #fileInput {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sales Performance Dashboard</h1>
+    <input type="file" id="fileInput" accept="application/json">
+    <div class="container">
+        <div id="timeline" class="chart"></div>
+        <div id="chartPositions" class="chart"></div>
+        <div id="trendChart" class="chart"></div>
+        <div id="albumType" class="chart"></div>
+        <div id="missingChartData" class="chart"></div>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = JSON.parse(e.target.result);
+                    generateDashboard(data);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function generateDashboard(data) {
+            const albums = data.map(d => d.album);
+            const years = data.map(d => d.year);
+            const chartPositions = data.map(d => d.US_peak_chart_post !== '-' ? parseInt(d.US_peak_chart_post) : null);
+            const studioAlbums = data.filter(d => !d.album.toLowerCase().includes('live')).length;
+            const liveAlbums = data.length - studioAlbums;
+            const missingData = chartPositions.filter(pos => pos === null).length;
+
+            // Album Release Timeline
+            Plotly.newPlot('timeline', [{
+                x: years,
+                y: albums,
+                type: 'scatter',
+                mode: 'markers',
+                marker: { size: 10 }
+            }], { title: 'Album Release Timeline' });
+
+            // US Peak Chart Positions
+            Plotly.newPlot('chartPositions', [{
+                x: albums,
+                y: chartPositions,
+                type: 'bar'
+            }], { title: 'US Peak Chart Positions' });
+
+            // Chart Success Trend
+            Plotly.newPlot('trendChart', [{
+                x: years,
+                y: chartPositions,
+                type: 'scatter',
+                mode: 'lines+markers'
+            }], { title: 'Chart Success Trend' });
+
+            // Studio vs Live Albums
+            Plotly.newPlot('albumType', [{
+                labels: ['Studio Albums', 'Live Albums'],
+                values: [studioAlbums, liveAlbums],
+                type: 'pie'
+            }], { title: 'Studio vs Live Albums' });
+
+            // Albums Without Chart Data
+            Plotly.newPlot('missingChartData', [{
+                labels: ['With Chart Data', 'Without Chart Data'],
+                values: [data.length - missingData, missingData],
+                type: 'pie'
+            }], { title: 'Albums With/Without Chart Data' });
+        }
+    </script>
+</body>
+</html>
